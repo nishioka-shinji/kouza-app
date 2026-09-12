@@ -1,0 +1,22 @@
+# 依存
+node_modules/
+
+# Wrangler / Workers
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# ビルド成果物
+dist/
+.output/
+
+# ログ
+*.log
+npm-debug.log*
+
+# エディタ・OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
