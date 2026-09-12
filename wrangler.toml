@@ -1,4 +1,4 @@
-name = "sankaku"
+name = "kouza-app"
 main = "src/index.ts"
 compatibility_date = "2026-09-12"
 
