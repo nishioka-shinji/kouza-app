@@ -1,0 +1,6 @@
+name = "sankaku"
+main = "src/index.ts"
+compatibility_date = "2026-09-12"
+
+# D1 と R2 のバインディングは段階 3 以降で追加する。
+# LINE のチャネルシークレット・アクセストークンは wrangler secret put で登録する。

@@ -6,6 +6,8 @@ node_modules/
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
+# wrangler types の生成物。wrangler.toml から常に再生成できる
+worker-configuration.d.ts
 
 # ビルド成果物
 dist/

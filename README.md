@@ -31,7 +31,18 @@
 
 ## セットアップ
 
-未着手。プロジェクトの雛形を作る段階で追記する。
+Node は mise で固定している（`mise.toml`）。
+
+```sh
+mise install          # Node 24.21.0 を入れる
+npm install           # 依存をインストール
+npm run cf-typegen    # wrangler.toml からバインディングの型を生成
+npm run dev           # http://localhost:8787 で起動
+```
+
+`worker-configuration.d.ts` は `wrangler types` の生成物のためコミットしない。`wrangler.toml` を変更したら `npm run cf-typegen` で再生成する。
+
+チャネルシークレットとチャネルアクセストークンは `wrangler secret put` で登録する。ローカルでは `.dev.vars` に置く（いずれもコミットしない）。
 
 ## コスト
 
