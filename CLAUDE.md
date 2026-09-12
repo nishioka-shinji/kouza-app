@@ -37,15 +37,20 @@
 
 このリポジトリにおける検証手段の唯一の情報源。実装の正否はここに定義されたコマンドの出力で判断する。
 
-現時点ではプロジェクトの雛形が未作成のため、下記は雛形作成時に有効化する暫定定義。**コマンドを追加・変更したらこの節を更新する。**
+**コマンドを追加・変更したらこの節を更新する。**
 
 | 目的 | コマンド | 状態 |
 | --- | --- | --- |
-| 型チェック | `npx tsc --noEmit` | 雛形作成後に有効 |
-| ローカル起動 | `npx wrangler dev` | 雛形作成後に有効 |
-| デプロイ | `npx wrangler deploy` | 雛形作成後に有効 |
+| 型チェック | `npm run typecheck` | 有効 |
+| ローカル起動 | `npm run dev` | 有効 |
+| バインディング型の生成 | `npm run cf-typegen` | 有効 |
+| デプロイ | `npm run deploy` | 有効（未実行） |
 | D1 マイグレーション（ローカル） | `npx wrangler d1 migrations apply <DB名> --local` | スキーマ作成後に有効 |
 | D1 マイグレーション（本番） | `npx wrangler d1 migrations apply <DB名> --remote` | スキーマ作成後に有効 |
+
+Node は mise で固定している（`mise.toml`）。`npm` が見つからない場合は `mise install` を先に実行する。
+
+`wrangler.toml` を変更したら `npm run cf-typegen` を実行して `worker-configuration.d.ts` を再生成する。この生成物はコミットしない。
 
 テストフレームワークは未導入。導入する場合は Workers 環境で動く `vitest` + `@cloudflare/vitest-pool-workers` を第一候補とし、導入時にこの表へ追記する。
 
