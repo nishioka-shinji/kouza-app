@@ -388,6 +388,18 @@ Messaging API チャネルは LINE Developers Console から直接作成でき�
 
 Webhook の登録を段階 2 に置いたのは、URL が Workers のデプロイまで確定しないため。Official Account Manager の Webhook トグルは Webhook URL を登録するまで操作できず、段階 1 の時点ではオンにできない。
 
+### 段階 2 の実施結果（2026-09-13）
+
+公開 URL は `kouza-app.muso-lab.dev` に固定した。`workers.dev` のままにしなかったのは、Webhook URL が一度 LINE に登録すると変更しにくく、Worker 名の変更に URL が引きずられるため。`wrangler.toml` の `routes` に `custom_domain = true` で書くと、DNS レコードと証明書は wrangler が作る。
+
+この `routes` を明示した副作用で `workers.dev` のルートは無効になる（`workers_dev = true` を書けば併存できる）。併存させず一本に絞ったのは、段階 5 で署名検証を入れるときに入口が複数あると考えることが増えるため。
+
+デプロイは当面、手元から `wrangler deploy` で行う。GitHub 連携の Workers Builds は使わない。段階 5・6 は LINE の実機確認を挟むため、push とビルドを待たずに反映できるほうがループが速い。運用が固まったら切り替えを検討する。
+
+Webhook URL の登録は LINE Developers Console の Messaging API 設定タブで行う。Official Account Manager 側にトグルはあるが URL の入力欄がないため、登録は Console でしかできない。
+
+`/webhook` の実装は段階 5 なので、登録時点では 404 が返る。Console の「検証」ボタンは失敗するが、完了条件は登録とオンまでなので支障はない。経路が通っていることは `wrangler tail` で確認した。LINE からメッセージを送ると `POST https://kouza-app.muso-lab.dev/webhook - Ok` が記録される（`Ok` は Worker が例外なく応答した意味で、HTTP ステータスではない）。
+
 講座回の登録を段階 3 に置いたのは、段階 6 の講座回選択が `lessons` の存在を前提にするため。出欠（F4）は段階 8 のままでよく、ここで作るのは `lessons` の登録と一覧だけ。
 
 段階 3 では受講生の登録画面も作るが、段階 5 で follow による自動登録が入るため、管理画面側の役割は登録より在籍状態の管理と表示名の修正に寄る。段階 5 の着手時、自分自身は友だち追加済みで follow が飛ばない点に注意（F1 参照）。
@@ -408,6 +420,8 @@ Webhook の登録を段階 2 に置いたのは、URL が Workers のデプロ�
 | R2 のバイナリ配信 | `c.env.BUCKET.get(key)` の `body`（ReadableStream）をそのまま `Response` に返す。全体をメモリに載せない。Content-Type は `writeHttpMetadata()` でヘッダへ書き戻す | 下記 / F1 |
 | チャネルの作成手順 | Developers Console からは作成不可。公式アカウントを作り、Official Account Manager で Messaging API を有効化する。チャネルはプロバイダー間を移動できない | 7 章 段階 1 |
 | Webhook の設定可否 | Webhook URL を登録するまでトグルを操作できない。URL は Workers のデプロイまで確定しないため、段階 1 では完了できない | 7 章 段階 2 |
+| Webhook URL の登録場所 | LINE Developers Console の Messaging API 設定タブ。Official Account Manager にトグルはあるが URL の入力欄がない | 7 章 段階 2 |
+| 応答設定の現行 UI | 「応答モード」という項目は存在しない。「チャット」トグルがその役割を兼ね、オフなら Bot モード相当 | 下記 |
 
 R2 は非公開のままにし、Workers 経由でのみ配信する。6 章の画像配信の方針（URL に UUID を使い、推測できないようにする）と整合する。
 

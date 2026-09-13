@@ -44,6 +44,18 @@ npm run dev           # http://localhost:8787 で起動
 
 チャネルシークレットとチャネルアクセストークンは `wrangler secret put` で登録する。ローカルでは `.dev.vars` に置く（いずれもコミットしない）。
 
+## デプロイ
+
+手元から `wrangler deploy` で行う。GitHub 連携の Workers Builds は使わない。LINE の実機確認を挟む段階では、push とビルドを待たずに反映できるほうがループが速いため。
+
+```sh
+npx wrangler login    # 初回のみ
+npm run deploy
+npx wrangler tail     # Webhook が届いているかを見る
+```
+
+公開 URL は `https://kouza-app.muso-lab.dev`。`wrangler.toml` の `routes` で独自ドメインを当てているため、`workers.dev` のルートは無効になっている。
+
 ## コスト
 
 Cloudflare・LINE とも無料枠に収まることを確認済み。内訳は[設計書の 6 章](docs/design.md#6-非機能要件)を参照。
