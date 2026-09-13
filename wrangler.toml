@@ -2,5 +2,10 @@ name = "kouza-app"
 main = "src/index.ts"
 compatibility_date = "2026-09-12"
 
+# LINE の Webhook URL に登録するため、独自ドメインを当てて固定する。
+routes = [
+  { pattern = "kouza-app.muso-lab.dev", custom_domain = true }
+]
+
 # D1 と R2 のバインディングは段階 3 以降で追加する。
 # LINE のチャネルシークレット・アクセストークンは wrangler secret put で登録する。
