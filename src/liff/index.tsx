@@ -78,8 +78,40 @@ const MissingLiffId = ({ title }: { title: string }) => (
   </Layout>
 )
 
-// LIFF アプリのエンドポイント URL に登録したパス。ここが 404 だと LIFF の起動経路が壊れるため一覧へ送る。
-liff.get('/', (c) => c.redirect('/liff/images?memo=none'))
+// liff.state があれば init() が本来のパスへ飛ばす。無ければ素の LIFF URL なので一覧へ送る。
+const entryScript = (liffId: string) => `
+  liff
+    .init({ liffId: ${toScriptLiteral(liffId)}, withLoginOnExternalBrowser: true })
+    .then(() => {
+      if (!new URLSearchParams(location.search).has('liff.state')) {
+        location.replace('/liff/images?memo=none')
+      }
+    })
+    .catch((err) => {
+      document.getElementById('content').innerHTML =
+        '<p class="error">読み込みに失敗しました: ' + err + '</p>'
+    })
+`
+
+const Entry = ({ title, liffId }: { title: string; liffId: string }) => (
+  <Layout title={title}>
+    <div id="content">読み込み中…</div>
+    <script dangerouslySetInnerHTML={{ __html: entryScript(liffId) }}></script>
+  </Layout>
+)
+
+// エンドポイント URL は LIFF の 1 次リダイレクト先。liff.state に畳まれたパスを
+// liff.init() が展開するため、ここで 302 を返すと追加情報が失われる（公式が明示的に禁止）。
+liff.get('/', (c) => {
+  const liffId = c.env.LIFF_ID
+  const title = '画像とメモ'
+
+  if (!liffId) {
+    return c.html(<MissingLiffId title={title} />)
+  }
+
+  return c.html(<Entry title={title} liffId={liffId} />)
+})
 
 liff.get('/images', (c) => {
   const liffId = c.env.LIFF_ID
