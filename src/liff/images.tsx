@@ -57,12 +57,12 @@ const ImageList = ({ imageList, memoNone }: { imageList: ImageRow[]; memoNone: b
   if (imageList.length === 0) {
     return (
       <p>
-        {memoNone ? 'メモ未記入の画像はありません。' : 'まだ画像がありません。'}
-        {memoNone && (
+        {memoNone ? (
           <>
-            {' '}
-            <a href="/liff/images">すべての画像を見る</a>
+            メモ未記入の画像はありません。 <a href="/liff/images">すべての画像を見る</a>
           </>
+        ) : (
+          'まだ画像がありません。'
         )}
       </p>
     )
@@ -70,11 +70,18 @@ const ImageList = ({ imageList, memoNone }: { imageList: ImageRow[]; memoNone: b
 
   return (
     <>
-      {memoNone && (
-        <p class="notice">
-          メモ未記入のみ表示中。<a href="/liff/images">すべて表示</a>
-        </p>
-      )}
+      {/* 逆向きの導線がないと絞り込みを解いた後に戻れない。 */}
+      <p class="notice">
+        {memoNone ? (
+          <>
+            メモ未記入のみ表示中。<a href="/liff/images">すべて表示</a>
+          </>
+        ) : (
+          <>
+            すべて表示中。<a href="/liff/images?memo=none">メモ未記入のみ</a>
+          </>
+        )}
+      </p>
       <ul class="image-grid">
         {imageList.map((image) => (
           <li>
