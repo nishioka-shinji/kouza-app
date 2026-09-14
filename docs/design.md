@@ -241,7 +241,9 @@ Messaging API のリッチメニューやクイックリプライを試す場と
 - 講座回の登録、出欠一覧
 - お知らせの配信（Messaging API のプッシュ送信）
 
-Hono の JSX でサーバーサイド HTML を返す。認証は自分ひとりが使えればよいので、Basic 認証か Cloudflare Access で済ませる。
+Hono の JSX でサーバーサイド HTML を返す。認証は Cloudflare Access で行う（段階 3 で導入済み）。アプリ側に認証のコードも資格情報も持たず、Worker の手前で弾く。
+
+保護するのは管理画面のパスだけに限る。`/webhook` を保護すると LINE プラットフォームからの POST が認証画面へリダイレクトされて届かなくなり、LIFF 画面と画像配信（`/images/{uuid}`）を保護すると受講生の LINE アプリ内ブラウザから開けなくなる。受講生側の認証は LIFF の ID トークン検証（F2）が担う。
 
 ### スコープ外
 
@@ -334,7 +336,7 @@ D1 の行読み取りは返した行数ではなくスキャンした行数で�
 | 項目 | 方針 |
 | --- | --- |
 | 依存 | ライブラリを増やさない。放置しても壊れにくい構成を保つ |
-| 認証 | 受講生は LIFF の ID トークンを Workers 側で検証（F2）、運営者は Basic 認証または Cloudflare Access |
+| 認証 | 受講生は LIFF の ID トークンを Workers 側で検証（F2）、運営者は Cloudflare Access（管理画面のパスのみ） |
 | 画像配信 | R2 の内容は Workers 経由でのみ返す。URL に UUID を使い、推測できないようにする |
 | コスト | Cloudflare・LINE とも無料枠に収まることを確認済み（下表）。超える設計になったら見直す |
 | バックアップ | D1 のエクスポートを手動で取れる状態にしておく |
@@ -355,6 +357,7 @@ Cloudflare は月額 0 円で収まる。個人利用の規模に対して桁が
 | R2 Class A（書き込み） | 100 万リクエスト/月 | 画像保存のみ |
 | R2 Class B（読み取り） | 1,000 万リクエスト/月 | 一覧表示のみ |
 | R2 下り転送 | 無料 | — |
+| Zero Trust（Access） | 50 ユーザー | 運営者 1 人。管理画面の保護に使う |
 
 2026 年 9 月 1 日から、D1 の無料枠超過はエラーで停止する仕様に変わった（以前は超過しても動作した）。超えると `Your account has exceeded D1's free tier daily row read limit.` が返り、UTC 0 時まで復旧しない。5 章のインデックス方針はこれへの備えを兼ねる。
 
@@ -375,7 +378,7 @@ F1 の返信は応答メッセージなので課金されない。200 通を消�
 | --- | --- | --- |
 | 1 | アカウント準備 | LINE 公式アカウントを作成し、Official Account Manager で Messaging API を有効化。チャネルシークレットとチャネルアクセストークンを取得。Cloudflare アカウントを作成 |
 | 2 | Hono + Workers の疎通 | ローカルとデプロイ先で Hello World が返る。確定した URL を Webhook URL に登録し、Webhook をオンにする |
-| 3 | D1 のスキーマ作成と管理画面の受講生一覧・講座回登録 | 受講生と講座回を登録・一覧できる |
+| 3 | D1 のスキーマ作成と管理画面の受講生一覧・講座回登録 | 受講生と講座回を登録・一覧できる。デプロイ先でも動き、管理画面は Cloudflare Access で保護されている |
 | 4 | LIFF の調査と設定 | 初期化手順を公式ドキュメントで確認し、LIFF アプリを作成してエンドポイント URL を登録。空ページが LINE 内で開く |
 | 5 | LINE Webhook で画像を受信し R2 に保存、follow で受講生を自動登録 | トークに送った画像が R2 と D1 に入る。友だち追加で `students` に行ができる。応答メッセージで LIFF へのリンクが届く |
 | 6 | LIFF でメモ入力（講座回の選択を含む）と画像一覧、ID トークン検証 | LINE 内で画像を見て、回を選んでメモを書ける。他人の画像 ID を指定すると 401 が返る |
@@ -406,6 +409,54 @@ Webhook URL の登録は LINE Developers Console の Messaging API 設定タブ�
 
 段階 4 を独立させ、かつ Webhook より前に置いたのは 2 つの理由による。ひとつは、ここだけ調査と外部サービスの設定で、コードを書く作業ではないため。段階 6 で実装しながら調べると、自分のコードの誤りなのか設定の不足なのか切り分けられなくなる。もうひとつは、段階 5 の応答メッセージに LIFF へのリンクを載せるため、LIFF アプリの URL が先に確定している必要があるため。空ページが LINE 内で開くところまでを先に通す。
 
+### 段階 3 の実施結果（2026-09-14）
+
+D1 データベース `kouza-app-db` を APAC リージョンに作成し、バインディング名 `DB` で `wrangler.toml` に登録した。マイグレーションは `migrations/` に置き、`migrations_dir` は既定値と同じなので明示していない。
+
+#### 認証を段階 7 から段階 3 へ前倒しした
+
+当初は認証を段階 7 に置いていたが、段階 3 でデプロイまで通すなら、認証のない管理画面が公開URLに出てしまう。受講生の LINE ユーザー ID と表示名が読める状態になるため、段階 3 の時点で入れた。
+
+Basic 認証ではなく Cloudflare Access を選んだ。アプリ側にコードも資格情報も持たずに済み、Cloudflare の主要機能に触れるという習得目的（1 章の判断基準 1）にも沿う。Basic 認証は認証情報が毎リクエスト平文で飛び、MFA もログアウトもなく、総当たりに対して自前のレート制限が要る。
+
+ID プロバイダーは One-time PIN（メールに届くワンタイム PIN）にした。Google を IdP にすると Google Cloud Platform でのプロジェクト作成と OAuth クライアント作成が要るが、One-time PIN なら設定が不要で、許可はメールアドレスの指定だけで済む。
+
+#### 保護するパスを管理画面に限る
+
+Zero Trust のセルフホストアプリケーションとして、宛先に `kouza-app.muso-lab.dev/admin` と `kouza-app.muso-lab.dev/admin/*` の 2 件を登録した。ポリシーは Action: Allow / Include: Emails で運営者のアドレス 1 件。
+
+2 件に分けたのは、Cloudflare のパス指定では `/admin/*` が `/admin` 自身を覆わないため。`/admin/*` だけを登録すると管理画面のトップが無防備に残る。
+
+Workers ダッシュボードの「Protect this Worker behind Access」は使ってはいけない。Worker に紐づく全ドメイン（routes、Custom Domain、workers.dev、プレビュー）をまとめて保護するため、段階 5 の `/webhook` が 302 で弾かれて Webhook が死ぬ。同じ理由で、宛先のパスを空欄や `/*` にするのも不可。段階 6 の LIFF 画面と画像配信も巻き込む。
+
+ローカル開発（`npm run dev`）は Cloudflare を経由しないため Access が効かない。管理画面の保護はデプロイ先でしか確認できない。
+
+Zero Trust のプランは Free で、50 ユーザーまで無料。自分ひとりなので 0 円に収まる。
+
+#### マイグレーションで 5 テーブルすべてを作る
+
+段階 3 で画面を作るのは `students` と `lessons` だけだが、`images` / `attendances` / `notices` も 1 本目のマイグレーションに含めた。`images` と `attendances` の外部キーが `students` / `lessons` を参照し、SQLite では `ALTER TABLE` で外部キーを後から追加できずテーブル再作成になるため。
+
+#### status は英語で格納する
+
+`students.status` は `enrolled` / `completed`、`attendances.status` は `present` / `absent` / `late` を格納し、CHECK 制約で縛る。5 章の表記は「受講中／修了」「出席／欠席／遅刻」だが、これは画面での表示にあたる。SQL やコード中に日本語リテラルが散るのを避けるため、DB には英語を入れて表示側で和訳する。対訳表は `src/admin/format.ts` の 1 箇所に置く。
+
+CHECK 制約と対訳表は値の集合を一致させる必要がある。片方だけ値を増やすと実行時に CHECK 違反になる。
+
+#### 入力値の検証はアプリ側で行う
+
+HTML の `required` はクライアント側にしか効かず、フォームを介さない POST では素通りする。`NOT NULL` は空文字を弾かない。そのため必須項目の空文字チェックと `status` の値チェックをアプリ側に置き、不正な入力は保存せずエラーを表示して再入力させる。
+
+`lessons.held_on` は形式（`YYYY-MM-DD`）の一致だけでは足りない。`2026-02-30` のような実在しない日付が通ってしまうため、`Date` で UTC 正規化して往復比較し、実在する日付かを確かめる。この値は段階 6 の講座回選択の基準になるので、壊れた日付が入ると後段の並び順と絞り込みが狂う。
+
+#### 段階 5 への申し送り
+
+動作確認のため、本番の `students` にテスト行（`line_user_id` が `Utest-stage3`）を 1 件入れてある。これは LINE の実ユーザー ID ではないので、段階 5 で実 ID の行を作るときに削除する。
+
+F1 に書いたとおり、開発者自身は開発開始時点で友だち追加済みのため follow イベントが飛んでこない。段階 5 では自分の LINE ユーザー ID を持つ行を別途作る必要がある。実 ID は LINE Developers Console か `wrangler tail` で確認できる。
+
+`lessons` に入れた 1 件（`2026-09-20` / 第一回）は段階 6 の講座回選択でそのまま使えるので残す。
+
 ## 8. 確認済み事項（2026-09-12）
 
 公式ドキュメントで裏を取った結果。詳細は各章に反映済み。
@@ -422,6 +473,9 @@ Webhook URL の登録は LINE Developers Console の Messaging API 設定タブ�
 | Webhook の設定可否 | Webhook URL を登録するまでトグルを操作できない。URL は Workers のデプロイまで確定しないため、段階 1 では完了できない | 7 章 段階 2 |
 | Webhook URL の登録場所 | LINE Developers Console の Messaging API 設定タブ。Official Account Manager にトグルはあるが URL の入力欄がない | 7 章 段階 2 |
 | 応答設定の現行 UI | 「応答モード」という項目は存在しない。「チャット」トグルがその役割を兼ね、オフなら Bot モード相当 | 下記 |
+| Access のパス指定 | `/admin/*` は `/admin` 自身を覆わない。パスを空欄または `/*` にすると apex と全パスを覆う。ポート番号・クエリ文字列・アンカーは使えない | 7 章 段階 3 |
+| Workers の Access 保護 | ダッシュボードの「Protect this Worker behind Access」は Worker に紐づく全ドメインを保護する。パス単位の保護は Zero Trust のセルフホストアプリケーションで行う | 7 章 段階 3 |
+| Zero Trust の無料枠 | Free プランは 50 ユーザーまで | 6 章 |
 
 R2 は非公開のままにし、Workers 経由でのみ配信する。6 章の画像配信の方針（URL に UUID を使い、推測できないようにする）と整合する。
 

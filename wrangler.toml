@@ -7,5 +7,10 @@ routes = [
   { pattern = "kouza-app.muso-lab.dev", custom_domain = true }
 ]
 
-# D1 と R2 のバインディングは段階 3 以降で追加する。
+# R2 のバインディングは段階 5 で追加する。
 # LINE のチャネルシークレット・アクセストークンは wrangler secret put で登録する。
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kouza-app-db"
+database_id = "01d99122-69bd-4fb2-875e-d22321bd0b08"
