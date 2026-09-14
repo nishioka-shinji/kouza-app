@@ -203,12 +203,14 @@ ID トークン（`liff.getIDToken()`）を送り、Workers 側で LINE の検�
 ```
 POST https://api.line.me/oauth2/v2.1/verify
   id_token=<LIFF から受け取った ID トークン>
-  client_id=<LIFF アプリのチャネル ID>
+  client_id=<LINE Login チャネルの ID>
 ```
+
+`client_id` に渡すのは LINE Login チャネルの ID であって、Webhook で使う Messaging API チャネルの ID ではない。LIFF アプリは LINE Login チャネルにしか追加できないため、この 2 つは別のチャネルになる（段階 4 参照）。取り違えると検証が通らない。
 
 応答の `sub` が検証済みの LINE ユーザー ID になる。この値だけを `students.line_user_id` の照合に使い、クライアントから来た他の値は使わない。検証に失敗したら 401 を返す。
 
-チャネル ID は秘密ではないが、`wrangler.toml` の `vars` に置いて環境ごとに切り替えられるようにする。
+チャネル ID は秘密ではないが、`wrangler.toml` の `vars` に置いて環境ごとに切り替えられるようにする（`LINE_LOGIN_CHANNEL_ID`）。
 
 この検証は LIFF からのリクエストすべてに必要になるため、Hono のミドルウェアとして実装し、F2 と F3 の両方に適用する。検証済みの LINE ユーザー ID は `c.set()` でハンドラへ渡す。
 
@@ -457,6 +459,58 @@ F1 に書いたとおり、開発者自身は開発開始時点で友だち追�
 
 `lessons` に入れた 1 件（`2026-09-20` / 第一回）は段階 6 の講座回選択でそのまま使えるので残す。
 
+### 段階 4 の実施結果（2026-09-14）
+
+#### LIFF アプリには LINE Login チャネルが要る
+
+LIFF アプリは Messaging API チャネルに追加できず、LINE Login チャネルを別に作る必要がある。段階 1 で作った Messaging API チャネルとは別物になるため、チャネルは 2 つになる。
+
+両者は**同じプロバイダーの下に作る**。LINE Login チャネルの基本設定にある「リンクされた LINE 公式アカウント」で、段階 1 の公式アカウントに紐づける。
+
+この影響が出るのは F2 の ID トークン検証で、`client_id` に渡すのは LINE Login チャネルの ID になる。Messaging API チャネルの ID を渡すと検証が通らない。段階 6 で自分のコードを疑う前にここを確かめる。
+
+#### エンドポイント URL は `/liff` に当てる
+
+`https://kouza-app.muso-lab.dev/liff` をエンドポイント URL に登録する。Cloudflare Access の保護対象は `/admin` と `/admin/*` の 2 件だけなので衝突しない。受講生の LINE アプリ内ブラウザから開くパスを Access で保護してはいけない（段階 3 参照）。
+
+サイズは `Full`、スコープは `openid` と `profile` の 2 つを選ぶ。`openid` がないと F2 の ID トークン検証が成立せず、`profile` がないと表示名を取れない。`chat_message.write`（ユーザーの代理でメッセージを送る）は使わないので選ばない。
+
+#### チャネルと LIFF アプリの命名
+
+開発者向けの命名で揃えた。種別が名前から分かることを優先している。
+
+| 対象 | 名前 |
+| --- | --- |
+| Messaging API チャネル | `kouza-app-channel` |
+| LINE Login チャネル | `kouza-app-login` |
+| LIFF アプリ | `kouza-app-memo` |
+
+チャネル名と LIFF アプリ名は受講生の目に触れる。チャネル名は初回の同意画面に、LIFF アプリ名は LIFF を開いている間のヘッダーに出る。自分ひとりでテストする間は支障がないが、受講生に配る前に表示向けの名前へ直すか判断する（下記の申し送り）。
+
+チャネル説明は同意画面で読まれる前提で、用途と公開範囲の 2 点を日本語で書いた。名前が開発者向けでも、説明が用途を説明していれば同意画面として成立する。
+
+#### LIFF SDK は CDN から読む
+
+`npm install @line/liff` はしない。サーバーサイド HTML に `<script>` を 1 行足すだけで足りるため、「ライブラリを増やさない」方針に沿って CDN から読む。`charset="utf-8"` の指定は SDK が UTF-8 で書かれているため公式が求めている。
+
+段階 4 で作ったのは疎通確認用のページで、`liff.init()` の成否・LIFF ブラウザ内かどうか・ID トークンを取れるかを画面に出すだけのもの。メモ入力と画像一覧は段階 6 でこの配下に足す。
+
+LIFF ID は `wrangler.toml` の `vars` に `LIFF_ID` として置く。秘密ではないので `secret` にはしない。
+
+#### 段階 5・6 への申し送り
+
+LIFF URL は後ろにパスとクエリを足せる。段階 5 の応答メッセージに載せる「未メモ一覧へのリンク」は `https://liff.line.me/{liffId}/images?memo=none` のような形にでき、エンドポイント URL と結合されて `/liff/images?memo=none` に着地する。
+
+LIFF URL を開いても LIFF ブラウザで開く保証はないと公式が明示している（OS の universal link の仕様に依存する）。段階 6 では `liff.isInClient()` が `false` になる場合を考慮する。外部ブラウザでは `liff.init()` の時点でログイン状態がないため、`withLoginOnExternalBrowser` か `liff.login()` の検討が要る。
+
+#### 受講生に配る前に見直すもの
+
+自分ひとりのテストでは支障がなく、実際の受講生を入れる前に判断が要る項目。段階 6 の完了時点で確認する。
+
+- チャネル名（`kouza-app-login`）— 初回の同意画面に出る。開発者向けの名前のままでよいか
+- LIFF アプリ名（`kouza-app-memo`）— LIFF のヘッダーに出る。同上
+- プライバシーポリシー URL とサービス利用規約 URL — LINE Login チャネルの登録では任意で、現状は空欄。LINE ユーザー ID・表示名・画像を保存する設計なので、受講生を入れるなら個人情報の取り扱いを示す文書が要る
+
 ## 8. 確認済み事項（2026-09-12）
 
 公式ドキュメントで裏を取った結果。詳細は各章に反映済み。
@@ -476,10 +530,17 @@ F1 に書いたとおり、開発者自身は開発開始時点で友だち追�
 | Access のパス指定 | `/admin/*` は `/admin` 自身を覆わない。パスを空欄または `/*` にすると apex と全パスを覆う。ポート番号・クエリ文字列・アンカーは使えない | 7 章 段階 3 |
 | Workers の Access 保護 | ダッシュボードの「Protect this Worker behind Access」は Worker に紐づく全ドメインを保護する。パス単位の保護は Zero Trust のセルフホストアプリケーションで行う | 7 章 段階 3 |
 | Zero Trust の無料枠 | Free プランは 50 ユーザーまで | 6 章 |
+| LIFF アプリの追加先 | Messaging API チャネルには追加できない。LINE Login チャネル（または LINE MINI App）にのみ追加する。1 チャネルあたり 30 個まで | 7 章 段階 4 / F2 |
+| LIFF の初期化 | `liff.init({ liffId })` が Promise を返し、完了まで他の API を呼べない。ページを開くたびに毎回実行する（同一 LIFF アプリ内の遷移でも） | 7 章 段階 4 |
+| LIFF SDK の入手 | CDN は `https://static.line-scdn.net/liff/edge/2/sdk.js`。SDK が UTF-8 のため `charset="utf-8"` の指定が要る | 7 章 段階 4 |
+| LIFF のスコープ | `getIDToken()` は `openid`、`getProfile()` は `profile` が必要。未選択・未同意なら `getIDToken()` は `null` を返す。ID トークンの有効期間は 1 時間 | F2 |
+| LIFF URL の形式 | `https://liff.line.me/{liffId}`。後ろにパスとクエリを足せ、エンドポイント URL のドメイン・パスと結合されて渡る | F1 / 7 章 段階 4 |
+| LIFF の起動環境 | LIFF URL を開いても LIFF ブラウザで開く保証はない（OS の universal link 仕様に依存）。外部ブラウザで開かれる場合を考慮する | 7 章 段階 4 |
+| エンドポイント URL の制約 | https のみ。URL フラグメント（`#`）は指定できない | 7 章 段階 4 |
 
 R2 は非公開のままにし、Workers 経由でのみ配信する。6 章の画像配信の方針（URL に UUID を使い、推測できないようにする）と整合する。
 
-未確認のまま残っているのは LIFF の初期化手順だけで、7 章の段階 4 として組み込んである。
+LIFF の初期化手順は段階 4 で確認した（7 章）。8 章の表に追記済みで、未確認のまま残っている項目はない。
 
 ### 受信内容の確認先
 
