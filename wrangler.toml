@@ -10,6 +10,12 @@ routes = [
 # R2 のバインディングは段階 5 で追加する。
 # LINE のチャネルシークレット・アクセストークンは wrangler secret put で登録する。
 
+[vars]
+# LIFF アプリの ID。秘密ではないので vars に置く。
+LIFF_ID = "2011601209-WDcj47ek"
+# ID トークン検証の client_id に使う。Messaging API ではなく LINE Login チャネルの ID。
+LINE_LOGIN_CHANNEL_ID = "2011601209"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "kouza-app-db"
