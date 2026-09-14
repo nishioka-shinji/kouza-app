@@ -52,7 +52,7 @@
 | D1 の任意クエリ（ローカル） | `npx wrangler d1 execute kouza-app-db --local --command "<SQL>"` | 有効 |
 | D1 の任意クエリ（本番） | `npx wrangler d1 execute kouza-app-db --remote --json --command "<SQL>"` | 有効 |
 | Worker のログ監視 | `npx wrangler tail` | 有効（未実行） |
-| R2 のオブジェクト取得 | `npx wrangler r2 object get kouza-app-images/<key> --file <保存先>` | 有効（未実行） |
+| R2 のオブジェクト取得（本番） | `npx wrangler r2 object get kouza-app-images/<key> --file <保存先> --remote` | 有効 |
 
 `d1 execute` は `--json` を付けないと結果の行が出力されず meta だけが返る。行を確認したいときは必ず付ける。
 
