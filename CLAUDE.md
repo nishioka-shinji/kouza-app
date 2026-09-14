@@ -45,8 +45,11 @@
 | ローカル起動 | `npm run dev` | 有効 |
 | バインディング型の生成 | `npm run cf-typegen` | 有効 |
 | デプロイ | `npm run deploy` | 有効（未実行） |
-| D1 マイグレーション（ローカル） | `npx wrangler d1 migrations apply <DB名> --local` | スキーマ作成後に有効 |
-| D1 マイグレーション（本番） | `npx wrangler d1 migrations apply <DB名> --remote` | スキーマ作成後に有効 |
+| D1 マイグレーション（ローカル） | `npx wrangler d1 migrations apply kouza-app-db --local` | 有効 |
+| D1 マイグレーション（本番） | `npx wrangler d1 migrations apply kouza-app-db --remote` | 有効 |
+| D1 のテーブル一覧（ローカル） | `npx wrangler d1 execute kouza-app-db --local --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"` | 有効 |
+| D1 のインデックス一覧（ローカル） | `npx wrangler d1 execute kouza-app-db --local --command "SELECT name, tbl_name FROM sqlite_master WHERE type='index' ORDER BY tbl_name, name"` | 有効 |
+| D1 の任意クエリ（ローカル） | `npx wrangler d1 execute kouza-app-db --local --command "<SQL>"` | 有効 |
 
 Node は mise で固定している（`mise.toml`）。`npm` が見つからない場合は `mise install` を先に実行する。
 

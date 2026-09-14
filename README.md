@@ -37,8 +37,13 @@ Node は mise で固定している（`mise.toml`）。
 mise install          # Node 24.21.0 を入れる
 npm install           # 依存をインストール
 npm run cf-typegen    # wrangler.toml からバインディングの型を生成
+npx wrangler d1 migrations apply kouza-app-db --local   # ローカル D1 にスキーマを作る
 npm run dev           # http://localhost:8787 で起動
 ```
+
+管理画面は `http://localhost:8787/admin`。ローカルでは Cloudflare を経由しないため Access は効かず、認証なしで開く。
+
+D1 を作り直す場合は `npx wrangler d1 create kouza-app-db` で作成し、出力された `database_id` を `wrangler.toml` の `[[d1_databases]]` に書く。本番のスキーマ適用は `--local` を `--remote` に替える。
 
 `worker-configuration.d.ts` は `wrangler types` の生成物のためコミットしない。`wrangler.toml` を変更したら `npm run cf-typegen` で再生成する。
 
