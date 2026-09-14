@@ -7,7 +7,6 @@ routes = [
   { pattern = "kouza-app.muso-lab.dev", custom_domain = true }
 ]
 
-# R2 のバインディングは段階 5 で追加する。
 # LINE のチャネルシークレット・アクセストークンは wrangler secret put で登録する。
 
 [vars]
@@ -20,3 +19,8 @@ LINE_LOGIN_CHANNEL_ID = "2011601209"
 binding = "DB"
 database_name = "kouza-app-db"
 database_id = "01d99122-69bd-4fb2-875e-d22321bd0b08"
+
+# 受信した画像の保存先。非公開のまま Workers 経由で配信する。
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "kouza-app-images"

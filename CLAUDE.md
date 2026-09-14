@@ -50,6 +50,13 @@
 | D1 のテーブル一覧（ローカル） | `npx wrangler d1 execute kouza-app-db --local --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"` | 有効 |
 | D1 のインデックス一覧（ローカル） | `npx wrangler d1 execute kouza-app-db --local --command "SELECT name, tbl_name FROM sqlite_master WHERE type='index' ORDER BY tbl_name, name"` | 有効 |
 | D1 の任意クエリ（ローカル） | `npx wrangler d1 execute kouza-app-db --local --command "<SQL>"` | 有効 |
+| D1 の任意クエリ（本番） | `npx wrangler d1 execute kouza-app-db --remote --json --command "<SQL>"` | 有効 |
+| Worker のログ監視 | `npx wrangler tail` | 有効（未実行） |
+| R2 のオブジェクト取得 | `npx wrangler r2 object get kouza-app-images/<key> --file <保存先>` | 有効（未実行） |
+
+`d1 execute` は `--json` を付けないと結果の行が出力されず meta だけが返る。行を確認したいときは必ず付ける。
+
+R2 にはオブジェクトの一覧コマンドがない（`wrangler r2 object` は get / put / delete のみ）。保存されたキーの一覧は D1 の `images.r2_key` で確認し、実体の存在はキーを指定した `object get` かダッシュボードで見る。
 
 Node は mise で固定している（`mise.toml`）。`npm` が見つからない場合は `mise install` を先に実行する。
 
