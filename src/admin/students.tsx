@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from './layout'
 import { STUDENT_STATUS_LABELS, formatStudentStatus, type StudentStatus } from './format'
+import { formatJst } from '../format'
 
 type Student = {
   id: number
@@ -41,7 +42,7 @@ const StudentsPage = ({
             <td>{student.name}</td>
             <td>{student.line_user_id}</td>
             <td>{formatStudentStatus(student.status)}</td>
-            <td>{student.created_at}</td>
+            <td>{formatJst(student.created_at)}</td>
             <td>
               <a href={`/admin/students/${student.id}/edit`}>編集</a>
             </td>

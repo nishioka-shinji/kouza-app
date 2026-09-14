@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { requireLineUser, type LiffEnv } from './auth'
+import { formatJst } from '../format'
 
 type ImageRow = {
   id: string
@@ -89,6 +90,7 @@ const ImageList = ({ imageList, memoNone }: { imageList: ImageRow[]; memoNone: b
               <img src={`/images/${image.id}`} alt="送信した写真" loading="lazy" />
               <div class="image-meta">
                 <div>{image.lesson_title ? `${image.held_on} ${image.lesson_title}` : '講座回未選択'}</div>
+                <div>{formatJst(image.received_at)}</div>
                 <div class={image.memo_body ? undefined : 'memo-none'}>
                   {image.memo_body ? 'メモあり' : 'メモ未記入'}
                 </div>
@@ -116,6 +118,7 @@ const MemoForm = ({
     {error && <p class="error">{error}</p>}
     {saved && <p class="notice">保存しました。</p>}
     <img class="edit-image" src={`/images/${image.id}`} alt="送信した写真" />
+    <p class="image-meta">{formatJst(image.received_at)}</p>
     <form method="post" action={`/liff/api/images/${image.id}`}>
       <label>
         講座回
