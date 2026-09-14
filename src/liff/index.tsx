@@ -51,10 +51,8 @@ const bootstrapScript = (liffId: string, endpoint: string) => `
   liff
     .init({ liffId: ${toScriptLiteral(liffId)}, withLoginOnExternalBrowser: true })
     .then(async () => {
-      if (!liff.isLoggedIn()) {
-        liff.login({ redirectUri: location.href })
-        return
-      }
+      // withLoginOnExternalBrowser がログインを済ませるため、ここで login() を呼ぶと
+      // 戻った直後にまだ false と判定されてループする。トークンの有無で判断する。
       const html = await request(${toScriptLiteral(endpoint)} + location.search)
       if (html !== null) {
         show(html)
