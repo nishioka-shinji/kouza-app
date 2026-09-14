@@ -1,62 +1,109 @@
 import { Hono } from 'hono'
 import { Layout } from './layout'
+import { liffImages } from './images'
 
 const liff = new Hono<{ Bindings: Env }>()
 
-// 段階 4 の疎通確認用。LIFF ブラウザで開けているか、init が通るかだけを見る。
-// メモ入力と画像一覧は段階 6 でこの配下に足す。
-liff.get('/', (c) => {
+// JSON.stringify は </script> をエスケープしないため、< を潰して script 要素からの脱出を防ぐ。
+const toScriptLiteral = (value: string) => JSON.stringify(value).replaceAll('<', '\\u003c')
+
+// ID トークンはブラウザで liff.init() が終わるまで得られないため、殻の HTML を先に返し、
+// 中身はトークン付きの fetch で取りに行く。この殻自体には検証を掛けない。
+const bootstrapScript = (liffId: string, endpoint: string) => `
+  const container = document.getElementById('content')
+  const show = (html) => { container.innerHTML = html }
+  const fail = (message) => { show('<p class="error">' + message + '</p>') }
+
+  const request = async (url, options) => {
+    const token = liff.getIDToken()
+    if (!token) {
+      fail('LINE アプリから開き直してください。')
+      return null
+    }
+    const res = await fetch(url, {
+      ...options,
+      headers: { ...(options && options.headers), Authorization: 'Bearer ' + token },
+    })
+    if (res.status === 401) {
+      fail('この画像を表示する権限がありません。')
+      return null
+    }
+    return await res.text()
+  }
+
+  // 断片内の form は素のマークアップのまま、送信だけ fetch に載せ替える（トークンをヘッダで運ぶため）。
+  const bindForms = () => {
+    for (const form of container.querySelectorAll('form')) {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault()
+        const html = await request(form.action, {
+          method: 'POST',
+          body: new URLSearchParams(new FormData(form)),
+        })
+        if (html !== null) {
+          show(html)
+          bindForms()
+        }
+      })
+    }
+  }
+
+  liff
+    .init({ liffId: ${toScriptLiteral(liffId)}, withLoginOnExternalBrowser: true })
+    .then(async () => {
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href })
+        return
+      }
+      const html = await request(${toScriptLiteral(endpoint)} + location.search)
+      if (html !== null) {
+        show(html)
+        bindForms()
+      }
+    })
+    .catch((err) => { fail('読み込みに失敗しました: ' + err) })
+`
+
+const Shell = ({ title, liffId, endpoint }: { title: string; liffId: string; endpoint: string }) => (
+  <Layout title={title}>
+    <div id="content">読み込み中…</div>
+    <script
+      // JSX が中身をエスケープしないよう dangerouslySetInnerHTML を使う。埋める値は toScriptLiteral を通す。
+      dangerouslySetInnerHTML={{ __html: bootstrapScript(liffId, endpoint) }}
+    ></script>
+  </Layout>
+)
+
+const MissingLiffId = ({ title }: { title: string }) => (
+  <Layout title={title}>
+    <p class="error">LIFF_ID が未設定です。wrangler.toml の vars に登録してください。</p>
+  </Layout>
+)
+
+liff.get('/images', (c) => {
   const liffId = c.env.LIFF_ID
+  const title = '画像とメモ'
+
+  if (!liffId) {
+    return c.html(<MissingLiffId title={title} />)
+  }
+
+  return c.html(<Shell title={title} liffId={liffId} endpoint="/liff/api/images" />)
+})
+
+liff.get('/images/:id', (c) => {
+  const liffId = c.env.LIFF_ID
+  const title = 'メモの編集'
+
+  if (!liffId) {
+    return c.html(<MissingLiffId title={title} />)
+  }
 
   return c.html(
-    <Layout title="LIFF 疎通確認">
-      {liffId ? (
-        <dl>
-          <dt>LIFF ID</dt>
-          <dd>{liffId}</dd>
-          <dt>初期化</dt>
-          <dd id="init">実行中…</dd>
-          <dt>LIFF ブラウザ内か</dt>
-          <dd id="in-client">-</dd>
-          <dt>ログイン済みか</dt>
-          <dd id="logged-in">-</dd>
-          <dt>ID トークン</dt>
-          <dd id="id-token">-</dd>
-        </dl>
-      ) : (
-        <p class="error">
-          LIFF_ID が未設定です。wrangler.toml の vars に登録してください。
-        </p>
-      )}
-      {liffId && (
-        <script
-          // JSX が中身をエスケープしないよう dangerouslySetInnerHTML を使う。
-          // liffId は LINE が発行する英数字とハイフンのみなので JSON.stringify で足りる。
-          dangerouslySetInnerHTML={{
-            __html: `
-              const show = (id, value) => {
-                document.getElementById(id).textContent = value
-              }
-              liff
-                .init({ liffId: ${JSON.stringify(liffId)} })
-                .then(() => {
-                  show('init', '成功')
-                  show('in-client', liff.isInClient() ? 'はい' : 'いいえ（外部ブラウザ）')
-                  show('logged-in', liff.isLoggedIn() ? 'はい' : 'いいえ')
-                  // openid スコープが未選択・未同意なら null が返る。
-                  const token = liff.isLoggedIn() ? liff.getIDToken() : null
-                  show('id-token', token ? '取得できた（' + token.length + ' 文字）' : '取得できない')
-                })
-                .catch((err) => {
-                  show('init', '失敗: ' + err)
-                  document.getElementById('init').className = 'error'
-                })
-            `,
-          }}
-        ></script>
-      )}
-    </Layout>
+    <Shell title={title} liffId={liffId} endpoint={`/liff/api/images/${c.req.param('id')}`} />
   )
 })
+
+liff.route('/api/images', liffImages)
 
 export { liff }
