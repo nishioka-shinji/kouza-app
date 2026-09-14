@@ -80,6 +80,9 @@ const MissingLiffId = ({ title }: { title: string }) => (
   </Layout>
 )
 
+// LIFF アプリのエンドポイント URL に登録したパス。ここが 404 だと LIFF の起動経路が壊れるため一覧へ送る。
+liff.get('/', (c) => c.redirect('/liff/images?memo=none'))
+
 liff.get('/images', (c) => {
   const liffId = c.env.LIFF_ID
   const title = '画像とメモ'
