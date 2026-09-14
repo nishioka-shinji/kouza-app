@@ -38,6 +38,7 @@ const LessonsPage = ({
         <tr>
           <th>開催日</th>
           <th>タイトル</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -45,6 +46,9 @@ const LessonsPage = ({
           <tr>
             <td>{lesson.held_on}</td>
             <td>{lesson.title}</td>
+            <td>
+              <a href={`/admin/images?lesson_id=${lesson.id}`}>画像</a>
+            </td>
           </tr>
         ))}
       </tbody>

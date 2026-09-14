@@ -44,7 +44,8 @@ const StudentsPage = ({
             <td>{formatStudentStatus(student.status)}</td>
             <td>{formatJst(student.created_at)}</td>
             <td>
-              <a href={`/admin/students/${student.id}/edit`}>編集</a>
+              <a href={`/admin/students/${student.id}/edit`}>編集</a>{' '}
+              <a href={`/admin/images?student_id=${student.id}`}>画像</a>
             </td>
           </tr>
         ))}

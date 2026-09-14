@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 
 type ImageRow = {
   r2_key: string
@@ -6,8 +6,8 @@ type ImageRow = {
 
 const images = new Hono<{ Bindings: Env }>()
 
-// <img> の GET に ID トークンを載せられないため、都度認証せず UUID の推測困難性に頼る（設計書 F3）。
-images.get('/:id', async (c) => {
+// 管理画面（/admin/images/:id）とも共有する画像配信の本体。挙動を変えずに切り出す。
+export const serveImage = async (c: Context<{ Bindings: Env }>): Promise<Response> => {
   const id = c.req.param('id')
 
   const image = await c.env.DB.prepare('SELECT r2_key FROM images WHERE id = ?')
@@ -33,6 +33,9 @@ images.get('/:id', async (c) => {
 
   // body（ReadableStream）をそのまま渡し、画像全体をメモリに載せない。
   return new Response(object.body, { headers })
-})
+}
+
+// <img> の GET に ID トークンを載せられないため、都度認証せず UUID の推測困難性に頼る（設計書 F3）。
+images.get('/:id', (c) => serveImage(c))
 
 export { images }
