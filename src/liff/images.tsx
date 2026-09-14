@@ -17,6 +17,9 @@ type LessonRow = {
   title: string
 }
 
+// D1 の行サイズ上限に当たれば 500 になるため、青天井の入力を防ぐ。
+const MEMO_BODY_MAX_LENGTH = 2000
+
 const liffImages = new Hono<LiffEnv>()
 
 // 検証済みの LINE ユーザー ID から受講生を引く。未登録なら null を返し、呼び出し側で空一覧にする。
@@ -135,7 +138,7 @@ const MemoForm = ({
       </label>
       <label>
         メモ
-        <textarea name="memo_body">{image.memo_body ?? ''}</textarea>
+        <textarea name="memo_body" maxlength={MEMO_BODY_MAX_LENGTH}>{image.memo_body ?? ''}</textarea>
       </label>
       <button type="submit">保存</button>
     </form>
@@ -210,7 +213,11 @@ liffImages.post('/:id', async (c) => {
     if (!lesson) {
       return c.html(
         <MemoForm
-          image={image}
+          image={{
+            ...image,
+            memo_body: memoBody,
+            lesson_id: Number.isInteger(parsed) ? parsed : null,
+          }}
           lessonList={await fetchLessons(c.env.DB)}
           error="選択された講座回が存在しません"
         />,
@@ -219,6 +226,17 @@ liffImages.post('/:id', async (c) => {
     }
 
     lessonId = lesson.id
+  }
+
+  if (memoBody.length > MEMO_BODY_MAX_LENGTH) {
+    return c.html(
+      <MemoForm
+        image={{ ...image, memo_body: memoBody, lesson_id: lessonId }}
+        lessonList={await fetchLessons(c.env.DB)}
+        error={`メモは ${MEMO_BODY_MAX_LENGTH} 文字以内で入力してください（${memoBody.length} 文字入力されています）`}
+      />,
+      400
+    )
   }
 
   // 空文字は NULL にし、未記入へ戻せるようにする（memo=none の一覧にも再び載る）。
