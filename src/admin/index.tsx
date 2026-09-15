@@ -3,6 +3,7 @@ import { Layout } from './layout'
 import { students } from './students'
 import { lessons } from './lessons'
 import { adminImages } from './images'
+import { attendances } from './attendances'
 
 const admin = new Hono<{ Bindings: Env }>()
 
@@ -17,5 +18,6 @@ admin.get('/', (c) =>
 admin.route('/students', students)
 admin.route('/lessons', lessons)
 admin.route('/images', adminImages)
+admin.route('/attendances', attendances)
 
 export { admin }

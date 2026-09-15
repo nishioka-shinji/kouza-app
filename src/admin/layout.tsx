@@ -36,6 +36,7 @@ export const Layout: FC<LayoutProps> = ({ title, children }) => (
         <a href="/admin/students">受講生一覧</a>
         <a href="/admin/lessons">講座回一覧</a>
         <a href="/admin/images">画像一覧</a>
+        <a href="/admin/attendances">出欠一覧</a>
       </nav>
       <main>
         <h1>{title}</h1>

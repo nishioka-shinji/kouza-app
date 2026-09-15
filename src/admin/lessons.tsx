@@ -47,7 +47,8 @@ const LessonsPage = ({
             <td>{lesson.held_on}</td>
             <td>{lesson.title}</td>
             <td>
-              <a href={`/admin/images?lesson_id=${lesson.id}`}>画像</a>
+              <a href={`/admin/images?lesson_id=${lesson.id}`}>画像</a>{' '}
+              <a href={`/admin/attendances?lesson_id=${lesson.id}`}>出欠</a>
             </td>
           </tr>
         ))}
