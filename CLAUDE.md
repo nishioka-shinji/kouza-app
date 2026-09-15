@@ -32,6 +32,7 @@
 - **未登録の受講生を落とさない**。`images.student_id` は `students` の行を前提にする。follow イベントで `/v2/bot/profile/{userId}` を引いて UPSERT し、message 側でも未登録なら同じ UPSERT を通す。デプロイ前から友だちだったユーザーには follow が飛ばない
 - **D1 にはインデックスを張る**。行読み取りは返した行数ではなくスキャンした行数で課金される。`students.line_user_id`（UNIQUE）、`images.line_message_id`（UNIQUE）、`images.student_id`、`images.lesson_id`、`attendances(lesson_id, student_id)`（UNIQUE）
 - **メモは `images.memo_body` に持つ**。テーブルを分けない。1 画像 1 メモ・履歴なし。未記入は NULL
+- **フォーム入力はアプリ側で検証する**。`required` はクライアント側にしか効かず、`NOT NULL` は空文字を弾かない。空文字は `Number()` で `0` になり、`<select>` の「すべて」も空文字で届く。数値化の前に形式（`/^[0-9]+$/` など）を確かめる。検証はフォームが実際に送る形（空文字を含む）で行い、URL 直打ちだけで済ませない
 
 ## 検証コマンド
 
