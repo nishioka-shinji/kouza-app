@@ -7,7 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "richmenu:create": "node --env-file=.dev.vars scripts/create-rich-menu.ts"
   },
   "dependencies": {
     "hono": "^4.13.7"

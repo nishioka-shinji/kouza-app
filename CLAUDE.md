@@ -54,6 +54,7 @@
 | D1 の任意クエリ（本番） | `npx wrangler d1 execute kouza-app-db --remote --json --command "<SQL>"` | 有効 |
 | Worker のログ監視 | `npx wrangler tail` | 有効（未実行） |
 | R2 のオブジェクト取得（本番） | `npx wrangler r2 object get kouza-app-images/<key> --file <保存先> --remote` | 有効 |
+| リッチメニューの作成・デフォルト設定 | `npm run richmenu:create -- --yes` | 有効。引数なしは何もせず終了する実行ガードあり。本番の全友だちに即時反映される。レビュー中の事故実行により 1 度実行され、その後削除して復旧済み（現在は一覧 0 件） |
 
 `d1 execute` は `--json` を付けないと結果の行が出力されず meta だけが返る。行を確認したいときは必ず付ける。
 
