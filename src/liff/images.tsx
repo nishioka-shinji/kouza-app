@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { requireLineUser, type LiffEnv } from './auth'
+import { formatJst } from '../format'
 
 type ImageRow = {
   id: string
@@ -15,6 +16,9 @@ type LessonRow = {
   held_on: string
   title: string
 }
+
+// D1 の行サイズ上限に当たれば 500 になるため、青天井の入力を防ぐ。
+const MEMO_BODY_MAX_LENGTH = 2000
 
 const liffImages = new Hono<LiffEnv>()
 
@@ -89,6 +93,7 @@ const ImageList = ({ imageList, memoNone }: { imageList: ImageRow[]; memoNone: b
               <img src={`/images/${image.id}`} alt="送信した写真" loading="lazy" />
               <div class="image-meta">
                 <div>{image.lesson_title ? `${image.held_on} ${image.lesson_title}` : '講座回未選択'}</div>
+                <div>{formatJst(image.received_at)}</div>
                 <div class={image.memo_body ? undefined : 'memo-none'}>
                   {image.memo_body ? 'メモあり' : 'メモ未記入'}
                 </div>
@@ -116,6 +121,7 @@ const MemoForm = ({
     {error && <p class="error">{error}</p>}
     {saved && <p class="notice">保存しました。</p>}
     <img class="edit-image" src={`/images/${image.id}`} alt="送信した写真" />
+    <p class="image-meta">{formatJst(image.received_at)}</p>
     <form method="post" action={`/liff/api/images/${image.id}`}>
       <label>
         講座回
@@ -132,7 +138,7 @@ const MemoForm = ({
       </label>
       <label>
         メモ
-        <textarea name="memo_body">{image.memo_body ?? ''}</textarea>
+        <textarea name="memo_body" maxlength={MEMO_BODY_MAX_LENGTH}>{image.memo_body ?? ''}</textarea>
       </label>
       <button type="submit">保存</button>
     </form>
@@ -207,7 +213,11 @@ liffImages.post('/:id', async (c) => {
     if (!lesson) {
       return c.html(
         <MemoForm
-          image={image}
+          image={{
+            ...image,
+            memo_body: memoBody,
+            lesson_id: Number.isInteger(parsed) ? parsed : null,
+          }}
           lessonList={await fetchLessons(c.env.DB)}
           error="選択された講座回が存在しません"
         />,
@@ -216,6 +226,17 @@ liffImages.post('/:id', async (c) => {
     }
 
     lessonId = lesson.id
+  }
+
+  if (memoBody.length > MEMO_BODY_MAX_LENGTH) {
+    return c.html(
+      <MemoForm
+        image={{ ...image, memo_body: memoBody, lesson_id: lessonId }}
+        lessonList={await fetchLessons(c.env.DB)}
+        error={`メモは ${MEMO_BODY_MAX_LENGTH} 文字以内で入力してください（${memoBody.length} 文字入力されています）`}
+      />,
+      400
+    )
   }
 
   // 空文字は NULL にし、未記入へ戻せるようにする（memo=none の一覧にも再び載る）。
